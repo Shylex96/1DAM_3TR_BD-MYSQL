@@ -358,3 +358,612 @@ FROM
 WHERE
     presupuestoDepartamento < 5
 ORDER BY 1;
+
+
+
+-- Primeros ejemplos de JOIN
+-- Sacar información de más de UNA tabla (relacionadas)
+-- Ejemplo 1: Mostrar la información de los Departamentos, 
+-- incluyendo el Nombre del Centro de trabajo al que pertenece.
+-- Producto Cartesiano o JOIN Natural
+-- El Join que siempre debemos usar es el innerJoin
+
+-- Si se llaman igual "nombre" y "nombre" tendríamos que poner delante el nombre de la tabla. 
+-- Por ejemplo: departamento.nombre
+
+-- EJEMPLO CARTESIANO -- NUNCA HAY QUE HACERLO ASÍ  (EJEMPLO 1)
+SELECT 
+    idDepartamento AS 'Nº Departamento',
+    nombreDepartamento AS 'Departamento',
+    nombreCentroTrabajo AS 'Centro Trabajo'
+FROM
+    departamentos,
+    centrostrabajo
+ORDER BY 1;
+
+-- EJEMPLO COMO SÍ SE DEBE HACER: USANDO INNER JOIN o JOIN interno  (EJEMPLO 2)
+SELECT 
+    idDepartamento AS 'Nº Departamento',
+    nombreDepartamento AS 'Departamento',
+    nombreCentroTrabajo AS 'Centro Trabajo'
+FROM
+    departamentos,
+    centrostrabajo
+WHERE
+    departamentos.idCentroTrabajoFK = centrostrabajo.idCentroTrabajo
+ORDER BY 1;
+
+-- Otro ejemplo: Obtener id de empleado, nombre de empleado
+-- y NOMBRE del departamento al que pertenece
+-- 110 PONS, CESAR Personal
+-- ...  (EJEMPLO 3) -- Esto ya es un inner join pero es implícito
+
+SELECT 
+    idEmpleado AS 'Nº Empleado',
+    nombreEmpleado AS 'Nombre Empleado',
+    nombreDepartamento AS 'Departamento'
+FROM
+    empleados,
+    departamentos
+WHERE
+    empleados.idDepartamentoFK = departamentos.idDepartamento
+ORDER BY 1;
+
+-- Lo mismo que el anterior pero solo los empleados que cobran menos de 1500€ al mes (EJEMPLO 4)
+
+SELECT 
+    idEmpleado AS 'Nº Empleado',
+    nombreEmpleado AS 'Nombre Empleado',
+    nombreDepartamento AS 'Departamento'
+FROM
+    empleados,
+    departamentos
+WHERE
+    (empleados.idDepartamentoFK = departamentos.idDepartamento)
+        && (salarioEmpleado < 1500)
+ORDER BY 1;
+
+-- Esta es la forma MÁS CORRECTA que existe. Internamente es mejor y es la que debemos usar SIEMPRE. (Ejemplo 5)
+
+SELECT 
+    idEmpleado AS 'Nº Empleado',
+    nombreEmpleado AS 'Nombre Empleado',
+    nombreDepartamento AS 'Departamento'
+FROM
+    empleados
+        INNER JOIN
+    departamentos ON empleados.idDepartamentoFK = departamentos.idDepartamento
+WHERE
+    salarioEmpleado < 1500
+ORDER BY 1;
+
+-- (Ejemplo 6): Empleado, Departamento y Centro || Más de 2 tablas. 
+
+SELECT 
+    nombreEmpleado AS 'Empleado',
+    nombreDepartamento AS 'Departamento',
+    nombreCentroTrabajo AS 'Centro Trabajo'
+FROM
+    empleados,
+    departamentos,
+    centrostrabajo
+WHERE
+    (empleados.idDepartamentoFK = departamentos.idDepartamento)
+        && (departamentos.idCentroTrabajoFK = centrostrabajo.idCentroTrabajo)
+ORDER BY 1;
+
+-- (Ejemplo 7): Ahora con la forma explícita del JOIN.
+
+SELECT 
+    nombreEmpleado AS 'Empleado',
+    nombreDepartamento AS 'Departamento',
+    nombreCentroTrabajo AS 'Centro Trabajo'
+FROM
+    empleados
+        INNER JOIN
+    departamentos ON empleados.idDepartamentoFK = departamentos.idDepartamento
+        INNER JOIN
+    centrostrabajo ON departamentos.idCentroTrabajoFK = centrostrabajo.idCentroTrabajo
+ORDER BY 1;
+
+-- 3.5 Llamemos presupuesto medio mensual de un departamento al resultado de dividir su presupuesto anual por 12. Supongamos que se decide aumentar los
+-- presupuestos medios mensuales de todos los departamentos en un 10% a partir del mes de octubre inclusive. Para los departamentos cuyo presupuesto mensual
+-- medio anterior a octubre es más de 5.000.000 €, hallar por orden alfabético el nombre de departamento y su presupuesto anual total después del incremento.
+
+-- El presupuesto de los departamentos es anual, por lo que al dividirlo entre 12 tenemos el mensual.
+-- De enero a septiembre se queda igual el presupuesto.
+
+SELECT 
+    nombreDepartamento AS 'Nombre Departamento',
+    CONCAT(ROUND((presupuestoDepartamento/12 *9) + (presupuestoDepartamento/12 * 3 * 1.1), 2), ' €') AS 'Presupuesto Anual Total'
+FROM
+    departamentos
+WHERE
+-- octubre, noviembre y diciembre son 3 meses. Se le aumenta un 10% al presupuesto
+    ((presupuestoDepartamento / 12) * 9) > 5
+ORDER BY 1;
+
+-- 3.6. Supongamos que en los próximos tres años el coste de vida va a aumentar un 6% anual y que se suben los salarios en la misma proporción, hallar para los
+-- empleados con más de 4 hijos su nombre y su salario anual, actual y para cada uno de los próximos tres años, clasificados por orden alfabético.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado',
+    CONCAT(ROUND((salarioEmpleado * 12.00), 2), ' €') AS 'Salario Anual Actual',
+	CONCAT(ROUND(((salarioEmpleado * 12) * 1.06), 2), ' €') AS 'Salario Anual Primer Año',
+    CONCAT(ROUND((((salarioEmpleado * 12) * 1.06) * 1.06), 2), ' €') AS 'Salario Anual Segundo Año',
+    CONCAT(ROUND(((((salarioEmpleado * 12) * 1.06) * 1.06) * 1.06), 2), ' €') AS 'Salario Anual Tercer Año'
+FROM
+    empleados
+WHERE
+    hijosEmpleado > 4
+ORDER BY 1;
+
+-- 3.7. Hallar, por orden alfabético, los nombres de los empleados tales que si se les da una gratificación 
+-- de 1.000 € por hijo, el total de esta gratificación no supera a la décima parte del salario.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado'
+FROM
+    empleados
+WHERE
+    -- ((salarioEmpleado * 12) * hijosEmpleado) < ((salarioEmpleado * 12) * .10)
+    -- (hijosEmpleado * 1000) < (salarioEmpleado * 1.10)
+    (hijosEmpleado * 1000) < (salarioEmpleado * 0.1)
+ORDER BY 1;
+
+-- 3.8. Para los empleados del departamento 112 hallar el nombre y el salario total de cada uno (salario más comisión), 
+-- por orden de salario total decreciente, y por orden alfabético dentro de salario total.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado',
+    CONCAT(salarioEmpleado + comisionEmpleado, ' €') AS 'Salario Total'
+FROM
+    empleados
+WHERE
+    idDepartamentoFK = 112
+ORDER BY salarioEmpleado + comisionEmpleado DESC , nombreEmpleado ASC;
+
+-- 3.9. Hallar ordenado por número de empleado, el nombre y salario total (salario 
+-- más comisión) de los empleados cuyo salario total supera los 3.000 € mensuales.
+
+SELECT 
+    idEmpleado AS 'Nº Empleado',
+    nombreEmpleado AS 'Empleado',
+    salarioEmpleado + comisionEmpleado AS 'Salario Total'
+FROM
+    empleados
+WHERE
+    salarioEmpleado + comisionEmpleado > 3000
+ORDER BY 1;
+
+-- 3.10. Obtener los números de los departamentos en los que haya algún empleado cuya comisión supere al 20 % de su salario.
+
+SELECT DISTINCT
+    idDepartamentoFK AS 'Número Departamento'
+FROM
+    empleados
+WHERE
+    comisionEmpleado > salarioEmpleado * 0.2
+ORDER BY 1;
+
+-- 3.11. Para todos los empleados que tienen comisión, hallar sus salarios mensuales totales incluyendo ésta. Obtenerlos por orden 
+-- alfabético. Halla también el porcentaje que de su salario total supone la comisión.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado',
+    CONCAT(salarioEmpleado + comisionEmpleado, ' €') AS 'Salario Total',
+    CONCAT(ROUND((100 * comisionEmpleado) / (salarioEmpleado + comisionEmpleado), 0), '%') AS 'Porcentaje Comisión'
+FROM
+    empleados
+WHERE
+    comisionEmpleado > 0
+ORDER BY 1;
+
+-- 3.12. Obtener los nombres de los departamentos que no dependen funcionalmente de otro.
+
+SELECT 
+    nombreDepartamento AS 'Nombre Departamento'
+FROM
+    departamentos
+WHERE
+    idDepartamentoFK IS NULL
+ORDER BY 1;
+
+-- 3.13. Para los empleados que no tienen comisión, obtener por orden alfabético el nombre y el cociente entre su salario y el número de hijos.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado',
+    CONCAT(ROUND(salarioEmpleado / hijosEmpleado, 2), ' €') AS 'Salario por hijo'
+FROM
+    empleados
+WHERE
+    comisionEmpleado = 0
+    && hijosEmpleado > 0
+ORDER BY 1;
+
+-- 3.14. Se desea hacer un regalo de un 1% del salario a los empleados en el día de su onomástica. 
+-- Hallar, por orden alfabético, los nombres y cuantía de los regalos en € para los que celebren su santo el día de San Honorio.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado',
+    CONCAT(ROUND(salarioEmpleado / 100, 2), ' €') AS 'Regalo'
+FROM
+    empleados
+WHERE
+    nombreEmpleado LIKE '%, Honorio%'
+        || nombreEmpleado LIKE '%, Honoria%'
+ORDER BY 1;
+
+-- 3.15. Obtener por orden alfabético los nombres de empleados que tengan al menos 13 letras.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado'
+FROM
+    empleados
+WHERE
+    LENGTH(nombreEmpleado) > 12
+ORDER BY 1;
+
+-- 3.16. Obtener los nombres abreviados para los departamentos tomando sus primeras nueve letras, por orden alfabético.
+
+SELECT 
+    substring(nombreDepartamento, 1, 9) AS 'Nombre Departamento'
+FROM
+    departamentos
+ORDER BY 1;
+
+-- 3.17.  Obtener los números de departamento, y los cinco caracteres siguientes al de la posición
+-- duodécima de sus nombres, mostrándolos por orden de número de departamento.
+
+SELECT 
+    idDepartamento AS 'idDepartamento',
+    SUBSTRING(nombreDepartamento, 13, 5) AS 'Nombre Departamento'
+FROM
+    departamentos
+ORDER BY 1;
+
+-- 3.18. Obtener los números de departamentos, y para los nombres de éstos con más de 12 caracteres
+-- extraes los cinco siguientes, mostrándolos por orden de número de departamento.
+
+SELECT 
+    idDepartamento,
+    SUBSTRING(nombreDepartamento, 13, 5) AS 'Nombre Departamento'
+FROM
+    departamentos
+WHERE 
+length(nombreDepartamento) > 12
+ORDER BY 1;
+
+-- 3.19. Obtener los tres últimos caracteres de los nombres de departamento por orden alfabético.
+
+SELECT 
+    RIGHT(nombreDepartamento, 3) AS 'Nombre Departamento'
+FROM
+    departamentos
+ORDER BY 1;
+
+-- 3.20. Hallar los nombres de los empleados que no tienen comisión, clasificados 
+-- de manera que aparezcan primero aquellos cuyos nombres son más cortos.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado'
+FROM
+    empleados
+WHERE
+    comisionEmpleado = 0
+ORDER BY LENGTH(nombreEmpleado), nombreEmpleado ASC;
+
+-- 3.21. Hallar, por orden alfabético, los nombres de empleados suprimiendo las tres últimas letras
+-- de los nombres de pila, para los empleados cuyos nombres de pila tengan más de 6 letras.
+
+SELECT 
+    SUBSTRING(nombreEmpleado,
+        1,
+        LENGTH(nombreEmpleado) - 3) AS 'Nombre acortado'
+FROM
+    empleados
+WHERE
+    nombreEmpleado LIKE '%,_______%'
+ORDER BY 1;
+
+-- 3.22. Se desea modificar la fecha de ingreso de Valeriana Mora (empleado número 430) poniendo el 3 de mayo de 1988.
+
+SELECT 
+    nombreEmpleado,
+    fechaNacimientoEmpleado AS 'Fecha Nacimiento'
+FROM
+    empleados
+WHERE
+    nombreEmpleado LIKE 'Mora, Valeriana'
+ORDER BY 1;
+
+UPDATE empleados 
+SET 
+    fechaNacimientoEmpleado = '1988-05-03'
+WHERE
+    idEmpleado = '430';
+
+-- 3.23. Se desea saber el nombre y fecha de nacimiento del empleado 110.
+
+SELECT 
+    nombreEmpleado,
+    fechaNacimientoEmpleado AS 'Fecha Nacimiento'
+FROM
+    empleados
+WHERE
+    nombreEmpleado LIKE 'PONS, CESAR'
+ORDER BY 1;
+
+-- 3.24. Extraer de la tabla de empleados los nombres de 
+-- los que  han ingresado posteriormente al año 1970.
+
+SELECT 
+    nombreEmpleado
+FROM
+    empleados
+WHERE
+    fechaIngresoEmpleado > '1969-01-31';
+    
+-- 3.25. Modificar la fecha de ingreso de Valeriana Mora (empleado número 430) poniendo la del día de hoy.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado', fechaIngresoEmpleado AS 'Fecha Ingreso'
+FROM
+    empleados
+WHERE
+    idEmpleado = '430'
+ORDER BY 1;
+
+UPDATE empleados 
+SET 
+    fechaIngresoEmpleado = '2023-05-17'
+WHERE
+    idEmpleado = '430';
+
+-- 3.26. Obtener los nombres y fechas de nacimiento de los empleados del departamento 100, en formato dd/mm/yyyy, de más viejo a más joven.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado', date_format(fechaNacimientoEmpleado, '%d/%m/%Y') AS 'Fecha Nacimiento'
+FROM
+    empleados
+WHERE
+    idDepartamentoFK = '100'
+ORDER BY fechaNacimientoEmpleado DESC;
+
+-- 3.27. Para los empleados que ingresaron durante el año 1968, después del mes de mayo, hallar, su nombre  
+-- y cuántos días llevaban trabajando en la empresa a primeros de año de 1969, por orden alfabético.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado',
+    timestampdiff(day, fechaIngresoEmpleado, '1969-01-01') AS 'Días hasta 1969'
+FROM
+    empleados
+WHERE
+    fechaIngresoEmpleado > '1968-05-01' && fechaIngresoEmpleado < '1969-01-1'
+ORDER BY 1;
+
+-- 3.28. Obtener por orden alfabético los nombres de los empleados 
+-- que ingresaron en los primeros noventa días del año 1988.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado'
+FROM
+    empleados
+WHERE
+    fechaIngresoEmpleado > '1988-01-01' && fechaIngresoEmpleado < '1988-03-01'
+ORDER BY 1;
+
+-- 3.29. Obtener, por orden alfabético, los nombres y fechas de nacimiento
+-- de los empleados que cumplen años en el mes de noviembre.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado', fechaNacimientoEmpleado AS 'Fecha Nacimiento'
+FROM
+    empleados
+WHERE
+    fechaNacimientoEmpleado LIKE '%-11-%'
+ORDER BY 1;
+
+-- 3.30. Obtener, por orden alfabético, los nombres de 
+--  los empleados que cumplan años en el día de hoy.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado', fechaNacimientoEmpleado AS 'Cumpleaños'
+FROM
+    empleados
+WHERE
+    fechaNacimientoEmpleado LIKE '17-05-2023'
+ORDER BY 1;
+
+-- 3.31. Obtener, por orden alfabético, los nombres de los empleados
+-- que cumplen 20 años de trabajo en la empresa en el año actual.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado'
+FROM
+    empleados
+WHERE
+    TIMESTAMPDIFF(YEAR,
+        fechaIngresoEmpleado,
+        '2023-%-%') = 20
+ORDER BY 1;
+
+-- 3.32. Obtener, por orden alfabético, los empleados que  
+-- en el día de hoy tienen 20 años cumplidos en la empresa.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado'
+FROM
+    empleados
+WHERE
+    TIMESTAMPDIFF(YEAR,
+        fechaIngresoEmpleado,
+        '2023-05-17') = 20
+ORDER BY 1;
+
+-- 3.33. Obtener los nombres y salarios de los empleados que hayan empezado 
+-- a trabajar en la empresa el año 88 o después, por orden alfabético
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado',
+    salarioEmpleado AS 'Salario'
+FROM
+    empleados
+WHERE
+	fechaIngresoEmpleado > '1988-01-01'
+ORDER BY 1;
+
+-- 3.34. Obtener, por orden alfabético, los nombres de los empleados 
+-- que empezaron a trabajar en la empresa en el año 1966.
+
+SELECT 
+    nombreEmpleado AS 'Nombre Empleado'
+FROM
+    empleados
+WHERE
+	fechaIngresoEmpleado > '1966-01-01' && fechaIngresoEmpleado < '1967-01-01'
+ORDER BY 1;
+
+-- 3.35. Obtener, por orden alfabético, los nombres de los
+-- empleados que han ingresado el 01/01/88 o en el día de hoy.
+
+SELECT 
+    nombreEmpleado
+FROM
+    empleados
+WHERE
+    fechaIngresoEmpleado = '1988-01-01'
+        OR fechaIngresoEmpleado = '2023-05-17'
+ORDER BY 1;
+
+-- 3.36. Supongamos que, según el convenio laboral de la empresa, para los empleados con más de un año de servicio,
+-- el número de días de vacaciones anuales expresado en días laborables es de 20, incrementados en uno más por cada 
+-- tres años de servicio cumplidos. Para los empleados que este año cumplen 45 o más años de edad y tienen más de un 
+-- año de servicio, hallar por orden alfabético el nombre y el número de días laborables de vacaciones anuales que 
+-- corresponde a cada uno.
+
+-- Saltamos hasta el apartado 4 - los ejercicios del apartado 3 están resueltos en la plataforma.
+
+--  GROUP BY:
+
+SELECT 
+    idDepartamentoFK AS 'Departamento', COUNT(1) AS 'Plantilla'
+FROM
+    empleados
+GROUP BY idDepartamentoFK
+ORDER BY 1;
+
+-- 4.1. Hallar para cada departamento el salario medio, el mínimo y el máximo.
+
+SELECT 
+    idDepartamentoFK AS 'Departamento',
+    ROUND(AVG(salarioEmpleado), 2) AS 'Salario Medio',
+    ROUND(MIN(salarioEmpleado), 2) AS 'Salario Mínimo',
+    ROUND(MAX(salarioEmpleado), 2) AS 'Salario Máximo'
+FROM
+    empleados
+GROUP BY idDepartamentoFK -- Si pusiéramos GROUP BY 1 sería lo mismo
+ORDER BY 1;
+
+-- 4.2. Hallar por departamentos la edad en años cumplidos del empleado más viejo
+-- del departamento que tiene comisión. Ordenar el resultado por edades.
+
+SELECT 
+    idDepartamentoFK AS 'Departamento',
+    MAX(TIMESTAMPDIFF(YEAR,
+        fechaNacimientoEmpleado,
+        CURDATE())) AS 'Edad'
+FROM
+    empleados
+WHERE
+    comisionEmpleado > 0
+GROUP BY idDepartamentoFK
+ORDER BY 2;
+
+-- Otra forma de hacer el 4.2 más simple PERO MÁS IMPRECISO (sin tener en cuenta días, meses, etc) :
+
+SELECT 
+    idDepartamentoFK AS 'Departamento',
+    MAX(YEAR(CURDATE())-YEAR(fechaNacimientoEmpleado)) AS 'Edad'
+FROM
+    empleados
+WHERE
+    comisionEmpleado > 0
+GROUP BY idDepartamentoFK
+ORDER BY 2;
+
+-- 4.3. Agrupando por departamento y número de hijos, hallar cuántos empleados hay en cada grupo.
+
+SELECT 
+    idDepartamentoFK AS 'Departamento', hijosEmpleado AS 'Nº hijos', COUNT(1) AS 'Número empleados'
+FROM
+    empleados
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
+-- 4.4. Hallar el salario medio y la edad media en años para cada grupo
+-- de empleados con igual comisión y para los que no la tengan.
+
+SELECT 
+    comisionEmpleado AS 'Comisión empleados',
+    AVG(salarioEmpleado) AS 'Salario medio',
+    AVG(TIMESTAMPDIFF(YEAR,
+        fechaNacimientoEmpleado,
+        CURDATE())) AS 'Media edad'
+FROM
+    empleados
+GROUP BY comisionEmpleado;
+
+-- 4.5. Para cada extensión telefónica, hallar cuántos empleados la usan y el salario medio de éstos.
+
+SELECT 
+    extensionEmpleado AS 'Extensión',
+    AVG(salarioEmpleado) AS 'Salario medio',
+    COUNT(1) AS 'Total Empleados'
+FROM
+    empleados
+GROUP BY extensionEmpleado
+ORDER BY 1;
+
+-- 4.6. Para cada extensión telefónica y cada departamento hallar 
+-- cuántos empleados la usan y el salario medio de éstos
+
+SELECT 
+    extensionEmpleado AS 'Extensión',
+    AVG(salarioEmpleado) AS 'Salario medio',
+    COUNT(1) AS 'Total Empleados'
+FROM
+    empleados
+GROUP BY extensionEmpleado, idDepartamentoFK;
+
+-- 4.7. Hallar los números de extensión telefónica mayores de los 
+-- diversos departamentos, sin incluir los números de éstos
+
+SELECT 
+    MAX(extensionEmpleado) AS 'Extensión más alta'
+FROM
+    empleados
+GROUP BY idDepartamentoFK;
+
+-- 4.8. Para cada extensión telefónica, hallar el número de departamento a los que sirve.
+
+SELECT 
+    extensionEmpleado AS 'Extensión', COUNT(1) AS 'Número de departamentos'
+FROM
+    empleados
+GROUP BY extensionEmpleado;
+
+-- 4.9. Para cada centro, hallar los presupuestos medios de los departamentos dirigidos
+-- en propiedad y en funciones, excluyendo del resultado el número del centro.
+
+SELECT 
+    CONCAT(AVG(presupuestoDepartamento), ' €') AS 'Presupuestos Medios'
+FROM
+    departamentos
+GROUP BY idCentroTrabajoFK;
+
+-- Cláusula HAVING - 4.10
+
+
+
+
